@@ -14,6 +14,21 @@ enum class ItemCondition {
     }
 }
 
+enum class ItemStatus {
+    AVAILABLE,
+    BORROWED,
+    REPAIRING;
+
+    companion object {
+        fun fromString(value: String): ItemStatus = when (value.uppercase()) {
+            "AVAILABLE" -> AVAILABLE
+            "BORROWED" -> BORROWED
+            "REPAIRING" -> REPAIRING
+            else -> AVAILABLE
+        }
+    }
+}
+
 data class Item(
     val id: String,
     val organizationId: String,
@@ -25,6 +40,9 @@ data class Item(
     val availableStock: Int,
     val condition: ItemCondition,
     val emoji: String = "📦",
+    val status: ItemStatus = ItemStatus.AVAILABLE,
+    val rentalPrice: Double = 0.0,
+    val isPaidRental: Boolean = false,
 ) {
-    val isAvailable: Boolean get() = availableStock > 0
+    val isAvailable: Boolean get() = availableStock > 0 && status == ItemStatus.AVAILABLE
 }

@@ -6,4 +6,6 @@ data class Organization(
     val description: String? = null,
     val role: UserRole,
     val inviteCode: String? = null,
+    val lateFeePerDay: Double = 0.0,
+    val allowPaidRental: Boolean = false,
 )

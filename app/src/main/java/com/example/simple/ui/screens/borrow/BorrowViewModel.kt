@@ -70,22 +70,25 @@ class BorrowViewModel @Inject constructor(
     fun submit() {
         val item = _selectedItem.value ?: return
         val org = orgId ?: return
-        viewModelScope.launch {
-            _submitState.value = BorrowSubmitState.Loading
-            val result = submitBorrowRequestUseCase(
-                orgId = org,
-                itemId = item.id,
-                quantity = _quantity.value,
-                startDate = _startDate.value,
-                endDate = _endDate.value,
-                notes = _notes.value.ifBlank { null },
-            )
-            _submitState.value = when (result) {
-                is Result.Success -> BorrowSubmitState.Success
-                is Result.Error -> BorrowSubmitState.Error(result.message)
-                is Result.Loading -> BorrowSubmitState.Loading
+
+            viewModelScope.launch {
+                _submitState.value = BorrowSubmitState.Loading
+                val result = submitBorrowRequestUseCase(
+                    orgId = org,
+                    itemId = item.id,
+                    quantity = _quantity.value,
+                    startDate = _startDate.value,
+                    endDate = _endDate.value,
+                    notes = _notes.value.ifBlank { null },
+                )
+
+                _submitState.value = when (result) {
+                    is Result.Success -> BorrowSubmitState.Success
+                    is Result.Error -> BorrowSubmitState.Error(result.message)
+                    is Result.Loading -> BorrowSubmitState.Loading
+                }
             }
-        }
+
     }
 
     fun resetSelection() {

@@ -1,127 +1,227 @@
 package com.example.simple.data.repository
 
 import com.example.simple.common.Result
-import com.example.simple.data.mapper.toDomain
-import com.example.simple.data.mapper.toEntity
-import com.example.simple.data.remote.api.ApiService
-import com.example.simple.data.remote.dto.request.CreateItemRequest
-import com.example.simple.data.remote.dto.request.RejectRequestDto
-import com.example.simple.data.remote.dto.request.UpdateItemRequest
 import com.example.simple.domain.model.BorrowRequest
 import com.example.simple.domain.model.Item
+import com.example.simple.domain.model.Organization
 import com.example.simple.domain.model.TransactionStatus
 import com.example.simple.domain.model.User
-import com.example.simple.data.local.database.dao.ItemDao
+import com.example.simple.domain.model.UserRole
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class AdminRepository @Inject constructor(
-    private val apiService: ApiService,
-    private val itemDao: ItemDao,
+    private val firestore: FirebaseFirestore,
 ) {
-    suspend fun getPendingRequests(orgId: String): Result<List<BorrowRequest>> = withContext(Dispatchers.IO) {
-        try {
-            val response = apiService.getPendingRequests(orgId)
-            val body = response.body()
-            if (response.isSuccessful && body != null) {
-                Result.Success(
-                    body.map {
-                        BorrowRequest(
-                            id = it.id,
-                            itemId = it.itemId,
-                            itemName = it.itemName,
-                            requesterId = it.requesterId,
-                            requesterName = it.requesterName,
-                            organizationId = it.organizationId,
-                            quantity = it.quantity,
-                            startDate = it.startDate,
-                            endDate = it.endDate,
-                            notes = it.notes,
-                            status = TransactionStatus.fromString(it.status),
-                        )
-                    },
-                )
-            } else {
-                Result.Error("Gagal memuat permintaan pending")
+    fun observePendingRequests(orgId: String): Flow<List<BorrowRequest>> = callbackFlow {
+        val listener = firestore.collection("organizations")
+            .document(orgId)
+            .collection("transactions")
+            .whereEqualTo("status", TransactionStatus.PENDING.name)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                val requests = snapshot?.documents?.mapNotNull { doc ->
+                    BorrowRequest(
+                        id = doc.id,
+                        itemId = doc.getString("itemId") ?: "",
+                        itemName = doc.getString("itemName") ?: "Unknown",
+                        requesterId = doc.getString("userId") ?: "",
+                        requesterName = doc.getString("userName") ?: "Unknown User",
+                        organizationId = orgId,
+                        quantity = doc.getLong("quantity")?.toInt() ?: 0,
+                        startDate = doc.getLong("borrowDate") ?: 0L,
+                        endDate = doc.getLong("dueDate") ?: 0L,
+                        notes = doc.getString("notes"),
+                        status = TransactionStatus.PENDING
+                    )
+                } ?: emptyList()
+                trySend(requests)
             }
-        } catch (e: Exception) {
-            Result.Error(e.message ?: "Tidak dapat terhubung ke server")
-        }
+        awaitClose { listener.remove() }
     }
 
     suspend fun approveRequest(orgId: String, requestId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val response = apiService.approveBorrowRequest(orgId, requestId)
-            if (response.isSuccessful) Result.Success(Unit) else Result.Error("Gagal menyetujui permintaan")
+            firestore.runTransaction { transaction ->
+                val requestRef = firestore.collection("organizations")
+                    .document(orgId)
+                    .collection("transactions")
+                    .document(requestId)
+                
+                val requestDoc = transaction.get(requestRef)
+                val itemId = requestDoc.getString("itemId") ?: throw Exception("Item ID tidak ditemukan")
+                val quantity = requestDoc.getLong("quantity")?.toInt() ?: 0
+                
+                val itemRef = firestore.collection("organizations")
+                    .document(orgId)
+                    .collection("items")
+                    .document(itemId)
+                
+                val itemDoc = transaction.get(itemRef)
+                val availableStock = itemDoc.getLong("availableStock")?.toInt() ?: 0
+                
+                if (availableStock < quantity) {
+                    throw Exception("Stok tidak mencukupi untuk disetujui (Tersedia: $availableStock)")
+                }
+                
+                // Update transaction status
+                transaction.update(requestRef, "status", TransactionStatus.APPROVED.name, "updatedAt", System.currentTimeMillis())
+                
+                // Decrement item stock
+                transaction.update(itemRef, "availableStock", availableStock - quantity)
+            }.await()
+            Result.Success(Unit)
         } catch (e: Exception) {
-            Result.Error(e.message ?: "Tidak dapat terhubung ke server")
+            Result.Error(e.message ?: "Gagal menyetujui permintaan")
         }
     }
 
     suspend fun rejectRequest(orgId: String, requestId: String, reason: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             try {
-                val response = apiService.rejectBorrowRequest(orgId, requestId, RejectRequestDto(reason))
-                if (response.isSuccessful) Result.Success(Unit) else Result.Error("Gagal menolak permintaan")
+                firestore.collection("organizations")
+                    .document(orgId)
+                    .collection("transactions")
+                    .document(requestId)
+                    .update(
+                        "status", TransactionStatus.REJECTED.name,
+                        "rejectionReason", reason,
+                        "updatedAt", System.currentTimeMillis()
+                    ).await()
+                Result.Success(Unit)
             } catch (e: Exception) {
-                Result.Error(e.message ?: "Tidak dapat terhubung ke server")
+                Result.Error(e.message ?: "Gagal menolak permintaan")
             }
         }
 
-    suspend fun addItem(orgId: String, request: CreateItemRequest): Result<Item> = withContext(Dispatchers.IO) {
+    suspend fun addItem(orgId: String, item: Item): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val response = apiService.createItem(orgId, request)
-            val body = response.body()
-            if (response.isSuccessful && body != null) {
-                itemDao.upsertAll(listOf(body.toEntity()))
-                Result.Success(body.toDomain())
-            } else {
-                Result.Error("Gagal menambah barang")
-            }
+            val data = hashMapOf(
+                "name" to item.name,
+                "description" to item.description,
+                "category" to item.category,
+                "location" to item.location,
+                "totalStock" to item.totalStock,
+                "availableStock" to item.availableStock,
+                "condition" to item.condition.name,
+                "emoji" to item.emoji,
+                "status" to item.status.name,
+                "rentalPrice" to item.rentalPrice,
+                "isPaidRental" to item.isPaidRental,
+                "updatedAt" to System.currentTimeMillis()
+            )
+            firestore.collection("organizations")
+                .document(orgId)
+                .collection("items")
+                .add(data)
+                .await()
+            Result.Success(Unit)
         } catch (e: Exception) {
-            Result.Error(e.message ?: "Tidak dapat terhubung ke server")
+            Result.Error(e.message ?: "Gagal menambah barang")
         }
     }
 
-    suspend fun updateItem(orgId: String, itemId: String, request: UpdateItemRequest): Result<Item> =
+    suspend fun updateItem(orgId: String, item: Item): Result<Unit> =
         withContext(Dispatchers.IO) {
             try {
-                val response = apiService.updateItem(orgId, itemId, request)
-                val body = response.body()
-                if (response.isSuccessful && body != null) {
-                    itemDao.upsertAll(listOf(body.toEntity()))
-                    Result.Success(body.toDomain())
-                } else {
-                    Result.Error("Gagal memperbarui barang")
-                }
+                val data = hashMapOf(
+                    "name" to item.name,
+                    "description" to item.description,
+                    "category" to item.category,
+                    "location" to item.location,
+                    "totalStock" to item.totalStock,
+                    "availableStock" to item.availableStock,
+                    "condition" to item.condition.name,
+                    "emoji" to item.emoji,
+                    "status" to item.status.name,
+                    "rentalPrice" to item.rentalPrice,
+                    "isPaidRental" to item.isPaidRental,
+                    "updatedAt" to System.currentTimeMillis()
+                )
+                firestore.collection("organizations")
+                    .document(orgId)
+                    .collection("items")
+                    .document(item.id)
+                    .set(data)
+                    .await()
+                Result.Success(Unit)
             } catch (e: Exception) {
-                Result.Error(e.message ?: "Tidak dapat terhubung ke server")
+                Result.Error(e.message ?: "Gagal memperbarui barang")
             }
         }
 
     suspend fun deleteItem(orgId: String, itemId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val response = apiService.deleteItem(orgId, itemId)
-            if (response.isSuccessful) Result.Success(Unit) else Result.Error("Gagal menghapus barang")
+            firestore.collection("organizations")
+                .document(orgId)
+                .collection("items")
+                .document(itemId)
+                .delete()
+                .await()
+            Result.Success(Unit)
         } catch (e: Exception) {
-            Result.Error(e.message ?: "Tidak dapat terhubung ke server")
+            Result.Error(e.message ?: "Gagal menghapus barang")
         }
     }
 
     suspend fun getMembers(orgId: String): Result<List<User>> = withContext(Dispatchers.IO) {
         try {
-            val response = apiService.getMembers(orgId)
-            val body = response.body()
-            if (response.isSuccessful && body != null) {
-                Result.Success(body.map { it.toDomain() })
-            } else {
-                Result.Error("Gagal memuat anggota")
+            val snapshot = firestore.collection("organizations")
+                .document(orgId)
+                .collection("members")
+                .get()
+                .await()
+            
+            val members = snapshot.documents.map { doc ->
+                User(
+                    id = doc.id,
+                    name = doc.getString("name") ?: "Unknown",
+                    email = doc.getString("email") ?: "",
+                    organizations = listOf(
+                        Organization(
+                            id = orgId,
+                            name = "", // Not needed for this list
+                            role = UserRole.fromString(doc.getString("role") ?: "BORROWER")
+                        )
+                    )
+                )
             }
+            Result.Success(members)
         } catch (e: Exception) {
-            Result.Error(e.message ?: "Tidak dapat terhubung ke server")
+            Result.Error(e.message ?: "Gagal memuat anggota")
+        }
+    }
+
+    suspend fun updateMemberRole(orgId: String, userId: String, newRole: UserRole): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val batch = firestore.batch()
+            
+            // Update in organization's member list
+            val orgMemberRef = firestore.collection("organizations").document(orgId)
+                .collection("members").document(userId)
+            batch.update(orgMemberRef, "role", newRole.name)
+            
+            // Update in user's memberships list
+            val userMembershipRef = firestore.collection("users").document(userId)
+                .collection("memberships").document(orgId)
+            batch.update(userMembershipRef, "role", newRole.name)
+            
+            batch.commit().await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "Gagal mengubah peran anggota")
         }
     }
 }

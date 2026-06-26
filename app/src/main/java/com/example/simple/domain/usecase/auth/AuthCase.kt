@@ -35,3 +35,16 @@ class LogoutUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(): Result<Unit> = authRepository.logout()
 }
+
+class ResetPasswordUseCase @Inject constructor(
+    private val authRepository: AuthRepository,
+) {
+    suspend operator fun invoke(email: String): Result<Unit> = authRepository.resetPassword(email)
+}
+
+class UpdateProfileUseCase @Inject constructor(
+    private val authRepository: AuthRepository,
+) {
+    suspend operator fun invoke(name: String, phone: String? = null, avatar: String? = null): Result<Unit> =
+        authRepository.updateProfile(name, phone, avatar)
+}

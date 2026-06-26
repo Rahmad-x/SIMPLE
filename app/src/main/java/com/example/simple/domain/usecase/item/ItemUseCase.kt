@@ -9,8 +9,11 @@ import javax.inject.Inject
 class GetItemsUseCase @Inject constructor(
     private val itemRepository: ItemRepository,
 ) {
-    fun observe(orgId: String, search: String = "", category: String? = null): Flow<List<Item>> =
-        itemRepository.observeItems(orgId, search, category)
+    fun observe(orgId: String, search: String = "", category: String? = null, forceRefresh: Boolean = false): Flow<List<Item>> =
+        itemRepository.observeItems(orgId, search, category, forceRefresh)
+
+    fun observeGlobal(search: String = ""): Flow<List<Item>> =
+        itemRepository.searchGlobalItems(search)
 
     suspend fun refresh(orgId: String): Result<Unit> = itemRepository.refreshItems(orgId)
 }

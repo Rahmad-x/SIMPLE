@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.simple.common.Result
 import com.example.simple.domain.usecase.auth.LoginUseCase
+import com.example.simple.domain.usecase.auth.ResetPasswordUseCase
 import com.example.simple.domain.usecase.auth.SignUpUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,6 +17,7 @@ import javax.inject.Inject
 class LoginViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
     private val signUpUseCase: SignUpUseCase,
+    private val resetPasswordUseCase: ResetPasswordUseCase,
 ) : ViewModel() {
 
     private val _loginState = MutableStateFlow<LoginState>(LoginState.Idle)
@@ -23,6 +25,9 @@ class LoginViewModel @Inject constructor(
 
     private val _isSignUpMode = MutableStateFlow(false)
     val isSignUpMode: StateFlow<Boolean> = _isSignUpMode.asStateFlow()
+
+    private val _isResetMode = MutableStateFlow(false)
+    val isResetMode: StateFlow<Boolean> = _isResetMode.asStateFlow()
 
     private val _name = MutableStateFlow("")
     val name: StateFlow<String> = _name.asStateFlow()
@@ -35,6 +40,13 @@ class LoginViewModel @Inject constructor(
 
     fun toggleMode() {
         _isSignUpMode.value = !_isSignUpMode.value
+        _isResetMode.value = false
+        _loginState.value = LoginState.Idle
+    }
+
+    fun toggleResetMode() {
+        _isResetMode.value = !_isResetMode.value
+        _isSignUpMode.value = false
         _loginState.value = LoginState.Idle
     }
 
@@ -45,6 +57,17 @@ class LoginViewModel @Inject constructor(
     fun submit() {
         viewModelScope.launch {
             _loginState.value = LoginState.Loading
+            
+            if (_isResetMode.value) {
+                val result = resetPasswordUseCase(_email.value)
+                _loginState.value = when (result) {
+                    is Result.Success -> LoginState.Error("Email reset password telah dikirim.")
+                    is Result.Error -> LoginState.Error(result.message)
+                    is Result.Loading -> LoginState.Loading
+                }
+                return@launch
+            }
+
             val result = if (_isSignUpMode.value) {
                 signUpUseCase(_name.value, _email.value, _password.value)
             } else {

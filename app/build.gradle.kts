@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.kapt)
+    alias(libs.plugins.google.services)
     alias(libs.plugins.hilt.android)
 }
 
@@ -66,6 +67,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview:1.6.8")
     implementation("androidx.compose.material3:material3:1.2.1")
     implementation("androidx.compose.material:material-icons-extended:1.6.8")
+    implementation("androidx.compose.material:material:1.6.8") // Add this for PullRefresh
     debugImplementation("androidx.compose.ui:ui-tooling:1.6.8")
     debugImplementation("androidx.compose.ui:ui-test-manifest:1.6.8")
 
@@ -80,7 +82,6 @@ dependencies {
     // Room (Local Database)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    kapt(libs.androidx.room.compiler)
 
     // Retrofit + OkHttp (Networking)
     implementation(libs.retrofit.core)
@@ -93,6 +94,15 @@ dependencies {
 
     // Coil (Image loading)
     implementation(libs.coil.compose)
+
+    // WorkManager
+    implementation(libs.androidx.work.runtime)
+
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.analytics)
 
     // Testing
     testImplementation(libs.junit)

@@ -61,7 +61,7 @@ class HomeViewModel @Inject constructor(
                 val stats = HomeStats(
                     totalItems = items.sumOf { it.totalStock },
                     availableItems = items.sumOf { it.availableStock },
-                    onLoan = transactions.count { it.status == TransactionStatus.ACTIVE },
+                    onLoan = transactions.count { it.status == TransactionStatus.BORROWED },
                     overdue = transactions.count { it.status == TransactionStatus.OVERDUE },
                 )
                 HomeState.Success(stats, transactions.take(5))

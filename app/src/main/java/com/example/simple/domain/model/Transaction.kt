@@ -2,17 +2,19 @@ package com.example.simple.domain.model
 
 enum class TransactionStatus {
     PENDING,
-    ACTIVE,
-    COMPLETED,
+    APPROVED,
+    BORROWED,
     OVERDUE,
+    RETURNED,
     REJECTED;
 
     companion object {
         fun fromString(value: String): TransactionStatus = when (value.uppercase()) {
             "PENDING" -> PENDING
-            "ACTIVE" -> ACTIVE
-            "COMPLETED" -> COMPLETED
+            "APPROVED" -> APPROVED
+            "BORROWED" -> BORROWED
             "OVERDUE" -> OVERDUE
+            "RETURNED" -> RETURNED
             "REJECTED" -> REJECTED
             else -> PENDING
         }
@@ -35,6 +37,10 @@ data class Transaction(
     val status: TransactionStatus,
     val notes: String? = null,
     val approvedBy: String? = null,
+    val conditionBefore: ItemCondition = ItemCondition.GOOD,
+    val conditionAfter: ItemCondition? = null,
+    val totalFee: Double = 0.0,
+    val lateFee: Double = 0.0,
 )
 
 data class BorrowRequest(

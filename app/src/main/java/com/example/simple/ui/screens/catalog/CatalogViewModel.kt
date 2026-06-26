@@ -36,6 +36,9 @@ class CatalogViewModel @Inject constructor(
     private val _catalogState = MutableStateFlow<CatalogState>(CatalogState.Loading)
     val catalogState: StateFlow<CatalogState> = _catalogState.asStateFlow()
 
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
     private var currentOrgId: String? = null
 
     init {
@@ -46,11 +49,19 @@ class CatalogViewModel @Inject constructor(
                 _catalogState.value = CatalogState.Error("Organisasi tidak ditemukan")
                 return@launch
             }
-            getItemsUseCase.refresh(orgId)
-
-            combine(_searchQuery, _selectedCategory) { query, category -> query to category }
-                .flatMapLatest { (query, category) -> getItemsUseCase.observe(orgId, query, category) }
-                .collect { _catalogState.value = CatalogState.Success(it) }
+            
+            combine(_searchQuery, _selectedCategory, _isRefreshing) { query, category, refreshing -> 
+                Triple(query, category, refreshing) 
+            }.flatMapLatest { (query, category, refreshing) -> 
+                if (query.isNotEmpty()) {
+                    getItemsUseCase.observeGlobal(query)
+                } else {
+                    getItemsUseCase.observe(orgId, query, category, forceRefresh = refreshing)
+                }
+            }.collect { 
+                _catalogState.value = CatalogState.Success(it)
+                _isRefreshing.value = false
+            }
         }
     }
 
@@ -58,8 +69,6 @@ class CatalogViewModel @Inject constructor(
     fun updateCategory(category: String?) { _selectedCategory.value = category }
 
     fun refresh() {
-        viewModelScope.launch {
-            currentOrgId?.let { getItemsUseCase.refresh(it) }
-        }
+        _isRefreshing.value = true
     }
 }

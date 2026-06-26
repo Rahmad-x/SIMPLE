@@ -16,8 +16,9 @@ import com.example.simple.ui.theme.SimpleColors
 fun StatusBadge(status: TransactionStatus, modifier: Modifier = Modifier) {
     val (bg, fg, label) = when (status) {
         TransactionStatus.PENDING -> Triple(SimpleColors.PendingContainer, SimpleColors.Pending, "Menunggu")
-        TransactionStatus.ACTIVE -> Triple(SimpleColors.ActiveContainer, SimpleColors.Active, "Aktif")
-        TransactionStatus.COMPLETED -> Triple(SimpleColors.SuccessContainer, SimpleColors.Success, "Selesai")
+        TransactionStatus.APPROVED -> Triple(SimpleColors.ActiveContainer, SimpleColors.Active, "Disetujui")
+        TransactionStatus.BORROWED -> Triple(SimpleColors.ActiveContainer, SimpleColors.Active, "Dipinjam")
+        TransactionStatus.RETURNED -> Triple(SimpleColors.SuccessContainer, SimpleColors.Success, "Selesai")
         TransactionStatus.OVERDUE -> Triple(SimpleColors.OverdueContainer, SimpleColors.Overdue, "Terlambat")
         TransactionStatus.REJECTED -> Triple(SimpleColors.ErrorContainer, SimpleColors.Error, "Ditolak")
     }

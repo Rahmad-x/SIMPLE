@@ -64,7 +64,6 @@ fun SimpleBottomNavBar(
     val items = buildList {
         add(BottomNavItem(Route.Home.route, "Home", Icons.Filled.Home))
         add(BottomNavItem(Route.Catalog.route, "Katalog", Icons.Filled.List))
-        add(BottomNavItem(Route.Borrow.route, "Pinjam", Icons.Filled.ShoppingCart))
         add(BottomNavItem(Route.History.route, "Riwayat", Icons.Filled.List))
         if (isAdmin) add(BottomNavItem(Route.AdminDashboard.route, "Admin", Icons.Filled.AdminPanelSettings))
         add(BottomNavItem(Route.Profile.route, "Profil", Icons.Filled.Person))

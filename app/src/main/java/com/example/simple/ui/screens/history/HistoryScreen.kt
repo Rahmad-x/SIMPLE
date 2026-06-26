@@ -30,11 +30,12 @@ import com.example.simple.ui.components.TransactionCard
 fun HistoryScreen(viewModel: HistoryViewModel = hiltViewModel()) {
     val historyState by viewModel.historyState.collectAsState()
     val selectedFilter by viewModel.selectedFilter.collectAsState()
+    val userRole by viewModel.userRole.collectAsState()
 
     val filters = listOf<Pair<String, TransactionStatus?>>(
         "Semua" to null,
-        "Aktif" to TransactionStatus.ACTIVE,
-        "Selesai" to TransactionStatus.COMPLETED,
+        "Aktif" to TransactionStatus.BORROWED,
+        "Selesai" to TransactionStatus.RETURNED,
         "Ditolak" to TransactionStatus.REJECTED,
         "Terlambat" to TransactionStatus.OVERDUE,
     )
@@ -78,6 +79,7 @@ fun HistoryScreen(viewModel: HistoryViewModel = hiltViewModel()) {
                             items(state.transactions, key = { it.id }) { tx ->
                                 TransactionCard(
                                     transaction = tx,
+                                    userRole = userRole,
                                     onReturnClick = { viewModel.returnItem(tx.id) },
                                 )
                             }

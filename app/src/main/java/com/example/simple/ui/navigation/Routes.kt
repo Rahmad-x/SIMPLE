@@ -7,18 +7,18 @@ sealed class Route(val route: String) {
 
     data object Home : Route("home")
     data object Catalog : Route("catalog")
-    data object ItemDetail : Route("item/{itemId}") {
-        fun createRoute(itemId: String) = "item/$itemId"
+    data object ItemDetail : Route("item/{orgId}/{itemId}") {
+        fun createRoute(orgId: String, itemId: String) = "item/$orgId/$itemId"
     }
-
-    data object Borrow : Route("borrow")
-    data object BorrowConfirm : Route("borrow-confirm/{itemId}") {
-        fun createRoute(itemId: String) = "borrow-confirm/$itemId"
+    data object BorrowForm : Route("borrow-form/{orgId}/{itemId}") {
+        fun createRoute(orgId: String, itemId: String) = "borrow-form/$orgId/$itemId"
     }
 
     data object History : Route("history")
 
     data object AdminDashboard : Route("admin")
+    data object AdminAddItem : Route("admin/add-item")
 
     data object Profile : Route("profile")
+    data object EditProfile : Route("profile/edit")
 }

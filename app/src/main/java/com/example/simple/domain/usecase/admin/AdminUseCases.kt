@@ -41,6 +41,9 @@ class ManageItemUseCase @Inject constructor(
 
     suspend fun delete(orgId: String, itemId: String): Result<Unit> =
         adminRepository.deleteItem(orgId, itemId)
+
+    suspend fun uploadImage(orgId: String, itemId: String, uri: android.net.Uri): Result<String> =
+        adminRepository.uploadItemImage(orgId, itemId, uri)
 }
 
 class GetMembersUseCase @Inject constructor(

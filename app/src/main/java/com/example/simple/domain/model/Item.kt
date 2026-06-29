@@ -43,6 +43,7 @@ data class Item(
     val status: ItemStatus = ItemStatus.AVAILABLE,
     val rentalPrice: Double = 0.0,
     val isPaidRental: Boolean = false,
+    val imageUrl: String? = null,
 ) {
     val isAvailable: Boolean get() = availableStock > 0 && status == ItemStatus.AVAILABLE
 }

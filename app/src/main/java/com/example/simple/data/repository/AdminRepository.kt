@@ -2,14 +2,8 @@ package com.example.simple.data.repository
 
 import com.example.simple.common.Result
 import com.example.simple.data.remote.api.FakeStoreApiService
-import com.example.simple.domain.model.BorrowRequest
-import com.example.simple.domain.model.Item
-import com.example.simple.domain.model.ItemCondition
-import com.example.simple.domain.model.ItemStatus
-import com.example.simple.domain.model.Organization
-import com.example.simple.domain.model.TransactionStatus
-import com.example.simple.domain.model.User
-import com.example.simple.domain.model.UserRole
+import com.example.simple.data.remote.api.ImgbbApiService
+import com.example.simple.domain.model.*
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -17,6 +11,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import java.io.File
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,7 +23,11 @@ import javax.inject.Singleton
 class AdminRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val fakeStoreApiService: FakeStoreApiService,
+    private val imgbbApiService: ImgbbApiService,
+    private val context: android.content.Context
 ) {
+    private val IMGBB_API_KEY = "9fca47ea814e229b23ccc93102ef1a80"
+
     suspend fun getExternalProducts(orgId: String): Result<List<Item>> = withContext(Dispatchers.IO) {
         try {
             val products = fakeStoreApiService.getProducts()
@@ -43,7 +45,8 @@ class AdminRepository @Inject constructor(
                     emoji = "🛒",
                     status = ItemStatus.AVAILABLE,
                     rentalPrice = it.price,
-                    isPaidRental = true
+                    isPaidRental = true,
+                    imageUrl = it.image
                 )
             }
             Result.Success(items)
@@ -51,6 +54,40 @@ class AdminRepository @Inject constructor(
             Result.Error(e.message ?: "Gagal memuat produk eksternal")
         }
     }
+
+    suspend fun uploadItemImage(orgId: String, itemId: String, imageUri: android.net.Uri): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            // Create temporary file from URI
+            val inputStream = context.contentResolver.openInputStream(imageUri)
+            val file = File(context.cacheDir, "temp_upload_${System.currentTimeMillis()}.jpg")
+            inputStream?.use { input ->
+                file.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+
+            if (!file.exists()) throw Exception("Gagal memproses file gambar")
+
+            val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+            val body = MultipartBody.Part.createFormData("image", file.name, requestFile)
+
+            val response = imgbbApiService.uploadImage(IMGBB_API_KEY, body)
+            
+            // Clean up temp file
+            if (file.exists()) file.delete()
+
+            if (response.success && response.data != null) {
+                android.util.Log.d("AdminRepo", "ImgBB Upload Success! URL: ${response.data.url}")
+                Result.Success(response.data.url)
+            } else {
+                throw Exception("ImgBB upload failed: ${response.status}")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("AdminRepo", "Upload Error: ${e.message}", e)
+            Result.Error(e.message ?: "Gagal mengunggah foto ke ImgBB")
+        }
+    }
+
     fun observePendingRequests(orgId: String): Flow<List<BorrowRequest>> = callbackFlow {
         val listener = firestore.collection("organizations")
             .document(orgId)
@@ -150,12 +187,14 @@ class AdminRepository @Inject constructor(
                 "status" to item.status.name,
                 "rentalPrice" to item.rentalPrice,
                 "isPaidRental" to item.isPaidRental,
+                "imageUrl" to item.imageUrl,
                 "updatedAt" to System.currentTimeMillis()
             )
             firestore.collection("organizations")
                 .document(orgId)
                 .collection("items")
-                .add(data)
+                .document(item.id)
+                .set(data)
                 .await()
             Result.Success(Unit)
         } catch (e: Exception) {
@@ -178,6 +217,7 @@ class AdminRepository @Inject constructor(
                     "status" to item.status.name,
                     "rentalPrice" to item.rentalPrice,
                     "isPaidRental" to item.isPaidRental,
+                    "imageUrl" to item.imageUrl,
                     "updatedAt" to System.currentTimeMillis()
                 )
                 firestore.collection("organizations")
@@ -238,12 +278,10 @@ class AdminRepository @Inject constructor(
         try {
             val batch = firestore.batch()
             
-            // Update in organization's member list
-            val orgMemberRef = firestore.collection("organizations").document(orgId)
+            val orgMemberRef = firestore.collection("organiz ations").document(orgId)
                 .collection("members").document(userId)
             batch.update(orgMemberRef, "role", newRole.name)
             
-            // Update in user's memberships list
             val userMembershipRef = firestore.collection("users").document(userId)
                 .collection("memberships").document(orgId)
             batch.update(userMembershipRef, "role", newRole.name)

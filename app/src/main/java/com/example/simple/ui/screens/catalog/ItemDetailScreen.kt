@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import com.example.simple.ui.components.ErrorScreen
 import com.example.simple.ui.components.LoadingScreen
 import com.example.simple.ui.components.PrimaryButton
@@ -55,15 +58,38 @@ fun ItemDetailScreen(
                         .padding(padding)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    // Header with Emoji
+                    // Header with Image or Emoji
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(200.dp)
+                            .height(250.dp)
                             .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = item.emoji, fontSize = 80.sp)
+                        if (!item.imageUrl.isNullOrBlank()) {
+                            SubcomposeAsyncImage(
+                                model = item.imageUrl,
+                                contentDescription = item.name,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                loading = {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(40.dp),
+                                        strokeWidth = 3.dp
+                                    )
+                                },
+                                error = {
+                                    Icon(
+                                        imageVector = Icons.Default.BrokenImage,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(60.dp),
+                                        tint = Color.Gray.copy(alpha = 0.5f)
+                                    )
+                                }
+                            )
+                        } else {
+                            Text(text = item.emoji, fontSize = 80.sp)
+                        }
                     }
 
                     Column(modifier = Modifier.padding(20.dp)) {
@@ -77,8 +103,6 @@ fun ItemDetailScreen(
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.primary
                             )
-                            // Reusing StatusBadge but it expects TransactionStatus, 
-                            // let's just show availability
                             val availabilityText = if (item.isAvailable) "Tersedia" else "Penuh"
                             val availabilityColor = if (item.isAvailable) Color(0xFF4CAF50) else Color(0xFFF44336)
                             

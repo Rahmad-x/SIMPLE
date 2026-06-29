@@ -69,6 +69,12 @@ class AddItemViewModel @Inject constructor(
     private val _isPaidRental = MutableStateFlow(false)
     val isPaidRental: StateFlow<Boolean> = _isPaidRental.asStateFlow()
 
+    private val _imageUri = MutableStateFlow<android.net.Uri?>(null)
+    val imageUri: StateFlow<android.net.Uri?> = _imageUri.asStateFlow()
+
+    private val _imageUrl = MutableStateFlow<String?>(null)
+    val imageUrl: StateFlow<String?> = _imageUrl.asStateFlow()
+
     init {
         if (isEditing && orgIdArg != null && itemIdArg != null) {
             loadItem(orgIdArg, itemIdArg)
@@ -90,6 +96,7 @@ class AddItemViewModel @Inject constructor(
                     _condition.value = item.condition
                     _rentalPrice.value = item.rentalPrice.toString()
                     _isPaidRental.value = item.isPaidRental
+                    _imageUrl.value = item.imageUrl
                     _state.value = AddItemState.Idle
                 }
                 is Result.Error -> {
@@ -111,6 +118,7 @@ class AddItemViewModel @Inject constructor(
     fun updateCondition(value: ItemCondition) { _condition.value = value }
     fun updateRentalPrice(value: String) { _rentalPrice.value = value }
     fun updateIsPaidRental(value: Boolean) { _isPaidRental.value = value }
+    fun updateImageUri(uri: android.net.Uri?) { _imageUri.value = uri }
 
     fun submit() {
         viewModelScope.launch {
@@ -123,9 +131,25 @@ class AddItemViewModel @Inject constructor(
 
             val stock = _totalStock.value.toIntOrNull() ?: 1
             val price = _rentalPrice.value.toDoubleOrNull() ?: 0.0
+            val itemId = itemIdArg ?: UUID.randomUUID().toString()
+
+            var finalImageUrl = _imageUrl.value
+            _imageUri.value?.let { uri ->
+                _state.value = AddItemState.Loading
+                val uploadResult = manageItemUseCase.uploadImage(orgId, itemId, uri)
+                if (uploadResult is com.example.simple.common.Result.Success) {
+                    finalImageUrl = uploadResult.data
+                    _imageUrl.value = finalImageUrl
+                } else if (uploadResult is com.example.simple.common.Result.Error) {
+                     _state.value = AddItemState.Error("Gagal upload gambar: ${uploadResult.message}")
+                     return@launch
+                }
+            }
+
+            android.util.Log.d("AddItem", "Saving item with Image URL: $finalImageUrl")
             
             val item = Item(
-                id = itemIdArg ?: UUID.randomUUID().toString(),
+                id = itemId,
                 organizationId = orgId,
                 name = _name.value,
                 description = _description.value.ifBlank { null },
@@ -137,7 +161,8 @@ class AddItemViewModel @Inject constructor(
                 emoji = _emoji.value,
                 status = ItemStatus.AVAILABLE,
                 rentalPrice = price,
-                isPaidRental = _isPaidRental.value
+                isPaidRental = _isPaidRental.value,
+                imageUrl = finalImageUrl
             )
 
             val result = if (isEditing) {

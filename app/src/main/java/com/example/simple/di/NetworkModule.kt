@@ -1,6 +1,7 @@
 package com.example.simple.di
 
 import com.example.simple.data.remote.api.FakeStoreApiService
+import com.example.simple.data.remote.api.ImgbbApiService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -33,6 +34,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    @javax.inject.Named("FakeStore")
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
             .baseUrl("https://fakestoreapi.com/")
@@ -43,7 +45,24 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideFakeStoreApiService(retrofit: Retrofit): FakeStoreApiService {
+    @javax.inject.Named("ImgBB")
+    fun provideImgbbRetrofit(okHttpClient: OkHttpClient): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("https://api.imgbb.com/")
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideFakeStoreApiService(@javax.inject.Named("FakeStore") retrofit: Retrofit): FakeStoreApiService {
         return retrofit.create(FakeStoreApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideImgbbApiService(@javax.inject.Named("ImgBB") retrofit: Retrofit): ImgbbApiService {
+        return retrofit.create(ImgbbApiService::class.java)
     }
 }

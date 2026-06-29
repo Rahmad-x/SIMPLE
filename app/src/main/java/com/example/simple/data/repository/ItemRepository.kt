@@ -24,8 +24,11 @@ class ItemRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val itemDao: ItemDao,
 ) {
+    /** Observe items from Local Database with Firestore Sync. */
     fun observeItems(orgId: String, search: String = "", category: String? = null, forceRefresh: Boolean = false): Flow<List<Item>> {
+        android.util.Log.d("ItemRepo", "Observing items for org: $orgId")
         return itemDao.getItemsByOrgId(orgId).map { entities ->
+            android.util.Log.d("ItemRepo", "Local DB returned ${entities.size} items")
             entities.map { it.toDomain() }
                 .filter { item ->
                     (search.isEmpty() || item.name.contains(search, ignoreCase = true)) &&
@@ -43,27 +46,31 @@ class ItemRepository @Inject constructor(
             .get(Source.SERVER)
             .await()
 
-        val items = snapshot.documents.mapNotNull { doc ->
-            Item(
-                id = doc.id,
-                organizationId = orgId,
-                name = doc.getString("name") ?: "",
-                description = doc.getString("description"),
-                category = doc.getString("category") ?: "Uncategorized",
-                location = doc.getString("location") ?: "Unknown",
-                totalStock = doc.getLong("totalStock")?.toInt() ?: 0,
-                availableStock = doc.getLong("availableStock")?.toInt() ?: 0,
-                condition = ItemCondition.fromString(doc.getString("condition") ?: "GOOD"),
-                emoji = doc.getString("emoji") ?: "📦",
-                status = ItemStatus.fromString(doc.getString("status") ?: "AVAILABLE"),
-                rentalPrice = doc.getDouble("rentalPrice") ?: 0.0,
-                isPaidRental = doc.getBoolean("isPaidRental") ?: false
-            )
-        }
+            val items = snapshot.documents.mapNotNull { doc ->
+                val imageUrl = doc.getString("imageUrl")
+                android.util.Log.d("ItemRepo", "Item: ${doc.getString("name")}, Image: $imageUrl")
+                Item(
+                    id = doc.id,
+                    organizationId = orgId,
+                    name = doc.getString("name") ?: "",
+                    description = doc.getString("description"),
+                    category = doc.getString("category") ?: "Uncategorized",
+                    location = doc.getString("location") ?: "Unknown",
+                    totalStock = doc.getLong("totalStock")?.toInt() ?: 0,
+                    availableStock = doc.getLong("availableStock")?.toInt() ?: 0,
+                    condition = ItemCondition.fromString(doc.getString("condition") ?: "GOOD"),
+                    emoji = doc.getString("emoji") ?: "📦",
+                    status = ItemStatus.fromString(doc.getString("status") ?: "AVAILABLE"),
+                    rentalPrice = doc.getDouble("rentalPrice") ?: 0.0,
+                    isPaidRental = doc.getBoolean("isPaidRental") ?: false,
+                    imageUrl = imageUrl
+                )
+            }
 
         itemDao.syncItems(orgId, items.map { ItemEntity.fromDomain(it) })
         Result.Success(Unit)
     } catch (e: Exception) {
+        android.util.Log.e("ItemRepo", "Refresh Error: ${e.message}", e)
         Result.Error(e.message ?: "Gagal refresh data")
     }
 
@@ -94,7 +101,8 @@ class ItemRepository @Inject constructor(
                         emoji = doc.getString("emoji") ?: "📦",
                         status = ItemStatus.fromString(doc.getString("status") ?: "AVAILABLE"),
                         rentalPrice = doc.getDouble("rentalPrice") ?: 0.0,
-                        isPaidRental = doc.getBoolean("isPaidRental") ?: false
+                        isPaidRental = doc.getBoolean("isPaidRental") ?: false,
+                        imageUrl = doc.getString("imageUrl")
                     )
                 } ?: emptyList()
 
@@ -126,7 +134,8 @@ class ItemRepository @Inject constructor(
                     emoji = doc.getString("emoji") ?: "📦",
                     status = ItemStatus.fromString(doc.getString("status") ?: "AVAILABLE"),
                     rentalPrice = doc.getDouble("rentalPrice") ?: 0.0,
-                    isPaidRental = doc.getBoolean("isPaidRental") ?: false
+                    isPaidRental = doc.getBoolean("isPaidRental") ?: false,
+                    imageUrl = doc.getString("imageUrl")
                 )
             )
         } else {

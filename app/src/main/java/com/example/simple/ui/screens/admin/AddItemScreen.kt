@@ -1,20 +1,26 @@
 package com.example.simple.ui.screens.admin
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.rememberAsyncImagePainter
 import com.example.simple.ui.components.PrimaryButton
 import com.example.simple.ui.components.SimpleTextField
 
@@ -33,8 +39,16 @@ fun AddItemScreen(
     val emoji by viewModel.emoji.collectAsState()
     val isPaidRental by viewModel.isPaidRental.collectAsState()
     val rentalPrice by viewModel.rentalPrice.collectAsState()
+    val imageUri by viewModel.imageUri.collectAsState()
+    val imageUrl by viewModel.imageUrl.collectAsState()
     
     val isEditing = viewModel.isEditing
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        viewModel.updateImageUri(uri)
+    }
 
     LaunchedEffect(state) {
         if (state is AddItemState.Success) {
@@ -62,6 +76,36 @@ fun AddItemScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Photo Picker Section
+            Card(
+                onClick = { photoPickerLauncher.launch("image/*") },
+                modifier = Modifier.fillMaxWidth().height(200.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    if (imageUri != null) {
+                        Image(
+                            painter = rememberAsyncImagePainter(imageUri),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        )
+                    } else if (imageUrl != null) {
+                        Image(
+                            painter = rememberAsyncImagePainter(imageUrl),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        )
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(48.dp))
+                            Text("Tambah Foto Barang", style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
+                }
+            }
+
             SimpleTextField(
                 value = name,
                 onValueChange = viewModel::updateName,

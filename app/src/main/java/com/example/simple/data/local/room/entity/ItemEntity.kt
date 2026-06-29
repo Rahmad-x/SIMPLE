@@ -21,6 +21,7 @@ data class ItemEntity(
     val status: String,
     val rentalPrice: Double,
     val isPaidRental: Boolean,
+    val imageUrl: String?,
 ) {
     fun toDomain(): Item = Item(
         id = id,
@@ -35,7 +36,8 @@ data class ItemEntity(
         emoji = emoji,
         status = ItemStatus.fromString(status),
         rentalPrice = rentalPrice,
-        isPaidRental = isPaidRental
+        isPaidRental = isPaidRental,
+        imageUrl = imageUrl
     )
 
     companion object {
@@ -52,7 +54,8 @@ data class ItemEntity(
             emoji = item.emoji,
             status = item.status.name,
             rentalPrice = item.rentalPrice,
-            isPaidRental = item.isPaidRental
+            isPaidRental = item.isPaidRental,
+            imageUrl = item.imageUrl
         )
     }
 }

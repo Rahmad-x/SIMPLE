@@ -16,6 +16,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navDeepLink
 import com.example.simple.domain.model.UserRole
 import com.example.simple.ui.components.SimpleBottomNavBar
 import com.example.simple.worker.ReminderWorker
@@ -35,6 +36,7 @@ import com.example.simple.ui.screens.login.LoginScreen
 import com.example.simple.ui.screens.onboarding.OnboardingScreen
 import com.example.simple.ui.screens.profile.EditProfileScreen
 import com.example.simple.ui.screens.profile.ProfileScreen
+import com.example.simple.ui.screens.settings.SettingsScreen
 
 /** Routes yang menampilkan bottom navigation bar. */
 private val mainRoutes = setOf(
@@ -114,11 +116,20 @@ fun SimpleNavHost(
                     )
                 }
 
-                composable(Route.Catalog.route) {
+                composable(
+                    route = Route.Catalog.route,
+                    deepLinks = listOf(navDeepLink { uriPattern = "simple://catalog" })
+                ) {
                     CatalogScreen(
                         onItemClick = { orgId, itemId ->
                             navController.navigate(Route.ItemDetail.createRoute(orgId, itemId))
                         },
+                        onEditItemClick = { orgId, itemId ->
+                            navController.navigate(Route.AdminEditItem.createRoute(orgId, itemId))
+                        },
+                        onAddItemClick = {
+                            navController.navigate(Route.AdminAddItem.route)
+                        }
                     )
                 }
 
@@ -146,7 +157,10 @@ fun SimpleNavHost(
                     HistoryScreen()
                 }
 
-                composable(Route.AdminDashboard.route) {
+                composable(
+                    route = Route.AdminDashboard.route,
+                    deepLinks = listOf(navDeepLink { uriPattern = "simple://admin" })
+                ) {
                     AdminDashboardScreen(
                         onNavigateToAddItem = {
                             navController.navigate(Route.AdminAddItem.route)
@@ -155,6 +169,12 @@ fun SimpleNavHost(
                 }
 
                 composable(Route.AdminAddItem.route) {
+                    AddItemScreen(
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(Route.AdminEditItem.route) {
                     AddItemScreen(
                         onNavigateBack = { navController.popBackStack() }
                     )
@@ -169,12 +189,21 @@ fun SimpleNavHost(
                         },
                         onNavigateToEditProfile = {
                             navController.navigate(Route.EditProfile.route)
+                        },
+                        onNavigateToSettings = {
+                            navController.navigate(Route.Settings.route)
                         }
                     )
                 }
 
                 composable(Route.EditProfile.route) {
                     EditProfileScreen(
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(Route.Settings.route) {
+                    SettingsScreen(
                         onNavigateBack = { navController.popBackStack() }
                     )
                 }

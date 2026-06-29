@@ -34,6 +34,7 @@ fun BorrowFormScreen(
     val endDate by viewModel.endDate.collectAsState()
     val requesterName by viewModel.requesterName.collectAsState()
     val requesterOrgName by viewModel.requesterOrgName.collectAsState()
+    val totalFee by viewModel.totalFee.collectAsState()
 
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     
@@ -173,6 +174,33 @@ fun BorrowFormScreen(
                     placeholder = "Contoh: Untuk kegiatan rapat BEM",
                     singleLine = false
                 )
+
+                if (item?.isPaidRental == true) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("Estimasi Biaya Sewa", style = MaterialTheme.typography.labelMedium)
+                                Text(
+                                    "Rp ${String.format("%,.0f", totalFee)}",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Text(
+                                "Rp ${String.format("%,.0f", item!!.rentalPrice)}/hari",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(20.dp))
 

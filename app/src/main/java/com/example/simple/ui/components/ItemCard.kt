@@ -53,6 +53,15 @@ fun ItemCard(
                     style = MaterialTheme.typography.labelLarge,
                     color = if (item.isAvailable) SimpleColors.Success else SimpleColors.Error,
                 )
+                
+                if (item.isPaidRental) {
+                    Text(
+                        text = "Rp ${String.format("%,.0f", item.rentalPrice)}/hari",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
             AvailabilityDot(isAvailable = item.isAvailable)

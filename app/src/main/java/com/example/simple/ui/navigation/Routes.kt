@@ -18,7 +18,11 @@ sealed class Route(val route: String) {
 
     data object AdminDashboard : Route("admin")
     data object AdminAddItem : Route("admin/add-item")
+    data object AdminEditItem : Route("admin/edit-item/{orgId}/{itemId}") {
+        fun createRoute(orgId: String, itemId: String) = "admin/edit-item/$orgId/$itemId"
+    }
 
     data object Profile : Route("profile")
     data object EditProfile : Route("profile/edit")
+    data object Settings : Route("settings")
 }

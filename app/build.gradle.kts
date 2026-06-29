@@ -82,6 +82,7 @@ dependencies {
     // Room (Local Database)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    kapt("androidx.room:room-compiler:2.6.1")
 
     // Retrofit + OkHttp (Networking)
     implementation(libs.retrofit.core)
@@ -106,6 +107,9 @@ dependencies {
 
     // Testing
     testImplementation(libs.junit)
+    testImplementation("org.mockito:mockito-core:5.11.0")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.6.8")

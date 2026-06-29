@@ -55,4 +55,5 @@ data class BorrowRequest(
     val endDate: Long,
     val notes: String? = null,
     val status: TransactionStatus,
+    val totalFee: Double = 0.0,
 )

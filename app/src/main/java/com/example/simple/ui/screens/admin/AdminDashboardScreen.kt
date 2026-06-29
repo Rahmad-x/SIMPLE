@@ -8,11 +8,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -20,6 +23,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.simple.common.Result
 import com.example.simple.domain.model.BorrowRequest
 import com.example.simple.domain.model.UserRole
 import com.example.simple.ui.components.ErrorScreen
@@ -40,12 +44,31 @@ fun AdminDashboardScreen(
     val membersState by viewModel.membersState.collectAsState()
     val activeOrg by viewModel.activeOrganization.collectAsState()
     val userRole by viewModel.userRole.collectAsState()
+    val importState by viewModel.importState.collectAsState()
     val clipboardManager = LocalClipboardManager.current
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    LaunchedEffect(importState) {
+        when (val res = importState) {
+            is Result.Success -> {
+                snackbarHostState.showSnackbar(res.data)
+                viewModel.clearImportState()
+            }
+            is Result.Error -> {
+                snackbarHostState.showSnackbar("Gagal impor: ${res.message}")
+                viewModel.clearImportState()
+            }
+            else -> Unit
+        }
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(padding)
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
@@ -77,11 +100,26 @@ fun AdminDashboardScreen(
                 
                 // Add Item Button (Manager/Admin only)
                 if (userRole == UserRole.ADMIN) {
-                    IconButton(
-                        onClick = onNavigateToAddItem,
-                        modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.shapes.medium)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Tambah Barang", tint = MaterialTheme.colorScheme.primary)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Import from API Button
+                        IconButton(
+                            onClick = viewModel::importExternalProducts,
+                            modifier = Modifier.background(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.shapes.medium),
+                            enabled = importState !is Result.Loading
+                        ) {
+                            if (importState is Result.Loading) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.CloudDownload, contentDescription = "Impor Produk", tint = MaterialTheme.colorScheme.secondary)
+                            }
+                        }
+
+                        IconButton(
+                            onClick = onNavigateToAddItem,
+                            modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.shapes.medium)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Tambah Barang", tint = MaterialTheme.colorScheme.primary)
+                        }
                     }
                 }
             }

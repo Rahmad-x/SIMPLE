@@ -41,6 +41,8 @@ class BorrowRepository @Inject constructor(
             val itemName = itemDoc.getString("name") ?: "Unknown Item"
             val itemEmoji = itemDoc.getString("emoji") ?: "📦"
             val totalStock = itemDoc.getLong("totalStock")?.toInt() ?: 0
+            val rentalPrice = itemDoc.getDouble("rentalPrice") ?: 0.0
+            val isPaidRental = itemDoc.getBoolean("isPaidRental") ?: false
 
             // Booking Logic: Check for overlapping transactions for this item
             val overlappingSnapshot = firestore.collectionGroup("transactions")
@@ -62,6 +64,11 @@ class BorrowRepository @Inject constructor(
                 return@withContext Result.Error("Stok tidak mencukupi untuk periode tersebut (Tersedia: ${totalStock - borrowedDuringPeriod})")
             }
 
+            // Calculate Fee
+            val durationMillis = (endDate - startDate).coerceAtLeast(0L)
+            val durationDays = (durationMillis / (1000 * 60 * 60 * 24)).toInt().coerceAtLeast(1)
+            val totalFee = if (isPaidRental) rentalPrice * quantity * durationDays else 0.0
+
             val request = hashMapOf(
                 "userId" to userId,
                 "userName" to userName,
@@ -74,6 +81,7 @@ class BorrowRepository @Inject constructor(
                 "dueDate" to endDate,
                 "notes" to notes,
                 "status" to TransactionStatus.PENDING.name,
+                "totalFee" to totalFee,
                 "updatedAt" to System.currentTimeMillis()
             )
             

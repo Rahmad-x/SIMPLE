@@ -12,9 +12,12 @@ import com.example.simple.domain.usecase.item.GetItemDetailUseCase
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
@@ -59,6 +62,16 @@ class BorrowFormViewModel @Inject constructor(
 
     private val _endDate = MutableStateFlow(System.currentTimeMillis() + 86400000) // Default 1 day
     val endDate: StateFlow<Long> = _endDate.asStateFlow()
+
+    val totalFee: StateFlow<Double> = combine(_item, _quantity, _startDate, _endDate) { item, qty, start, end ->
+        if (item == null || !item.isPaidRental) 0.0
+        else {
+            val q = qty.toIntOrNull() ?: 1
+            val durationMillis = (end - start).coerceAtLeast(0L)
+            val durationDays = (durationMillis / (1000 * 60 * 60 * 24)).toInt().coerceAtLeast(1)
+            item.rentalPrice * q * durationDays
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
     private val _state = MutableStateFlow<BorrowFormState>(BorrowFormState.Idle)
     val state: StateFlow<BorrowFormState> = _state.asStateFlow()
@@ -106,7 +119,7 @@ class BorrowFormViewModel @Inject constructor(
                 quantity = qty,
                 startDate = _startDate.value,
                 endDate = _endDate.value,
-                notes = _notes.value.ifBlank { null }
+                notes = if (_notes.value.isBlank()) null else _notes.value
             )
 
             _state.value = when (result) {

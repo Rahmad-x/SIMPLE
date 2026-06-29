@@ -74,6 +74,16 @@ fun TransactionCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
+            if (transaction.totalFee > 0) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Total Biaya: Rp ${String.format("%,.0f", transaction.totalFee)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
             // Only STAFF can validate returns
             if (userRole == UserRole.STAFF && (transaction.status == TransactionStatus.APPROVED || transaction.status == TransactionStatus.BORROWED) && onReturnClick != null) {
                 Spacer(modifier = Modifier.height(12.dp))

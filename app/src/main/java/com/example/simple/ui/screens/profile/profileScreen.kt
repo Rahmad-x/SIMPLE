@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,6 +25,7 @@ import com.example.simple.domain.model.UserRole
 fun ProfileScreen(
     onLoggedOut: () -> Unit,
     onNavigateToEditProfile: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val organizations by viewModel.organizations.collectAsState()
@@ -86,6 +88,16 @@ fun ProfileScreen(
             }
 
             HorizontalDivider(modifier = Modifier.padding(bottom = 24.dp))
+
+            // Settings Button
+            OutlinedButton(
+                onClick = onNavigateToSettings,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)
+            ) {
+                Icon(Icons.Default.Settings, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Pengaturan")
+            }
 
             Text(
                 text = "Organisasi Saya",

@@ -8,7 +8,9 @@ import com.example.simple.domain.model.BorrowRequest
 import com.example.simple.domain.model.Organization
 import com.example.simple.domain.model.UserRole
 import com.example.simple.domain.usecase.admin.ApproveBorrowRequestUseCase
+import com.example.simple.domain.usecase.admin.GetExternalProductsUseCase
 import com.example.simple.domain.usecase.admin.GetMembersUseCase
+import com.example.simple.domain.usecase.admin.ManageItemUseCase
 import com.example.simple.domain.usecase.admin.ObservePendingRequestsUseCase
 import com.example.simple.domain.usecase.admin.RejectBorrowRequestUseCase
 import com.example.simple.domain.usecase.admin.UpdateMemberRoleUseCase
@@ -36,6 +38,8 @@ class AdminViewModel @Inject constructor(
     private val rejectBorrowRequestUseCase: RejectBorrowRequestUseCase,
     private val getMembersUseCase: GetMembersUseCase,
     private val updateMemberRoleUseCase: UpdateMemberRoleUseCase,
+    private val getExternalProductsUseCase: GetExternalProductsUseCase,
+    private val manageItemUseCase: ManageItemUseCase,
     private val organizationRepository: OrganizationRepository,
 ) : ViewModel() {
 
@@ -44,6 +48,9 @@ class AdminViewModel @Inject constructor(
 
     private val _membersState = MutableStateFlow<AdminMembersState>(AdminMembersState.Loading)
     val membersState: StateFlow<AdminMembersState> = _membersState.asStateFlow()
+
+    private val _importState = MutableStateFlow<Result<String>?>(null)
+    val importState = _importState.asStateFlow()
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val activeOrganization: StateFlow<Organization?> = organizationRepository.activeOrgIdFlow
@@ -112,4 +119,26 @@ class AdminViewModel @Inject constructor(
             rejectBorrowRequestUseCase(id, requestId, reason)
         }
     }
+
+    fun importExternalProducts() {
+        viewModelScope.launch {
+            val orgId = organizationRepository.activeOrgIdFlow.first() ?: return@launch
+            _importState.value = Result.Loading
+            when (val result = getExternalProductsUseCase(orgId)) {
+                is Result.Success -> {
+                    // Just take top 3 for demo
+                    result.data.take(3).forEach { 
+                        manageItemUseCase.add(orgId, it)
+                    }
+                    _importState.value = Result.Success("Berhasil mengimpor 3 produk dari FakeStore API")
+                }
+                is Result.Error -> {
+                    _importState.value = Result.Error(result.message)
+                }
+                is Result.Loading -> Unit
+            }
+        }
+    }
+    
+    fun clearImportState() { _importState.value = null }
 }

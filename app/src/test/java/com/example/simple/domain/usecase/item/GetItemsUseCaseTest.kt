@@ -7,26 +7,17 @@ import com.example.simple.domain.model.ItemStatus
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Before
 import org.junit.Test
-import org.mockito.Mock
+import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
-import org.mockito.MockitoAnnotations
 
 class GetItemsUseCaseTest {
 
-    @Mock
-    private lateinit var itemRepository: ItemRepository
-    private lateinit var getItemsUseCase: GetItemsUseCase
-
-    @Before
-    fun setup() {
-        MockitoAnnotations.openMocks(this)
-        getItemsUseCase = GetItemsUseCase(itemRepository)
-    }
+    private val itemRepository = mock(ItemRepository::class.java)
+    private val getItemsUseCase = GetItemsUseCase(itemRepository)
 
     @Test
-    fun `observe should return items from repository`() = runTest {
+    fun observeShouldReturnItemsFromRepository() = runTest {
         val orgId = "org1"
         val expectedItems = listOf(
             Item(

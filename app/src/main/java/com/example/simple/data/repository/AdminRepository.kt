@@ -1,8 +1,11 @@
 package com.example.simple.data.repository
 
 import com.example.simple.common.Result
+import com.example.simple.data.remote.api.FakeStoreApiService
 import com.example.simple.domain.model.BorrowRequest
 import com.example.simple.domain.model.Item
+import com.example.simple.domain.model.ItemCondition
+import com.example.simple.domain.model.ItemStatus
 import com.example.simple.domain.model.Organization
 import com.example.simple.domain.model.TransactionStatus
 import com.example.simple.domain.model.User
@@ -14,13 +17,40 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class AdminRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
+    private val fakeStoreApiService: FakeStoreApiService,
 ) {
+    suspend fun getExternalProducts(orgId: String): Result<List<Item>> = withContext(Dispatchers.IO) {
+        try {
+            val products = fakeStoreApiService.getProducts()
+            val items = products.map { 
+                Item(
+                    id = UUID.randomUUID().toString(),
+                    organizationId = orgId,
+                    name = it.title,
+                    description = it.description,
+                    category = it.category,
+                    location = "Gudang",
+                    totalStock = 5,
+                    availableStock = 5,
+                    condition = ItemCondition.GOOD,
+                    emoji = "🛒",
+                    status = ItemStatus.AVAILABLE,
+                    rentalPrice = it.price,
+                    isPaidRental = true
+                )
+            }
+            Result.Success(items)
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "Gagal memuat produk eksternal")
+        }
+    }
     fun observePendingRequests(orgId: String): Flow<List<BorrowRequest>> = callbackFlow {
         val listener = firestore.collection("organizations")
             .document(orgId)

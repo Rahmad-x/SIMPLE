@@ -31,6 +31,10 @@ fun AddItemScreen(
     val location by viewModel.location.collectAsState()
     val totalStock by viewModel.totalStock.collectAsState()
     val emoji by viewModel.emoji.collectAsState()
+    val isPaidRental by viewModel.isPaidRental.collectAsState()
+    val rentalPrice by viewModel.rentalPrice.collectAsState()
+    
+    val isEditing = viewModel.isEditing
 
     LaunchedEffect(state) {
         if (state is AddItemState.Success) {
@@ -41,7 +45,7 @@ fun AddItemScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Tambah Barang Baru") },
+                title = { Text(if (isEditing) "Edit Barang" else "Tambah Barang Baru") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Kembali")
@@ -101,7 +105,26 @@ fun AddItemScreen(
                 placeholder = "Detail barang..."
             )
 
-            Spacer(modifier = Modifier.weight(1f))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Barang Sewa Berbayar", style = MaterialTheme.typography.bodyLarge)
+                Switch(checked = isPaidRental, onCheckedChange = viewModel::updateIsPaidRental)
+            }
+
+            if (isPaidRental) {
+                SimpleTextField(
+                    value = rentalPrice,
+                    onValueChange = viewModel::updateRentalPrice,
+                    label = "Harga Sewa per Hari",
+                    placeholder = "0.0",
+                    keyboardType = KeyboardType.Decimal
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             if (state is AddItemState.Error) {
                 Text(
@@ -112,7 +135,7 @@ fun AddItemScreen(
             }
 
             PrimaryButton(
-                text = "Simpan Barang",
+                text = if (isEditing) "Simpan Perubahan" else "Simpan Barang",
                 onClick = viewModel::submit,
                 loading = state is AddItemState.Loading
             )
